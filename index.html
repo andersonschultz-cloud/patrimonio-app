@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0b08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Patrimônio">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Patrimônio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;background:#0d0b08}
+body{-webkit-text-size-adjust:100%}
+*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none}
+input,textarea,select{-webkit-appearance:none;outline:none;user-select:text;font-family:inherit}
+button{-webkit-appearance:none;background:none;border:none;cursor:pointer;font:inherit}
+::-webkit-scrollbar{display:none}
+:root{--sat:env(safe-area-inset-top,44px);--sab:env(safe-area-inset-bottom,20px)}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;background:#0d0b08;z-index:9999;gap:16px;transition:opacity .4s}
+.ld-title{font-family:Georgia,serif;color:#c9a84c;font-size:13px;letter-spacing:.35em}
+.ld-sub{font-family:Georgia,serif;color:#50422f;font-size:10px;letter-spacing:.2em;margin-top:4px}
+</style>
+</head>
+<body>
+<div id="loading">
+  <div class="ld-title">◆ &nbsp; PATRIMÔNIO &nbsp; ◆</div>
+  <div class="ld-sub">CONECTANDO AO BANCO DE DADOS</div>
+</div>
+<div id="root"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo,useCallback}=React;
+
+/* ══ SUPABASE CLIENT ════════════════════════════════════════════════════ */
+const CFG = window.SUPABASE_CONFIG || {};
+const CONFIGURED = !!(CFG.url && CFG.anonKey &&
+  !CFG.url.includes('SEU-PROJETO') && !CFG.anonKey.includes('SUA-CHAVE'));
+
+const sb = CONFIGURED
+  ? window.supabase.createClient(CFG.url, CFG.anonKey)
+  : null;
+
+/* ══ THEME ══════════════════════════════════════════════════════════════ */
+const C={
+  bg:'#0d0b08',surf:'#141210',card:'#1a1714',card2:'#201d19',
+  gold:'#c9a84c',goldBr:'#e8ca72',
+  goldFt:'rgba(201,168,76,.09)',goldBd:'rgba(201,168,76,.22)',goldBd2:'rgba(201,168,76,.4)',
+  txt:'#d4c5a9',sub:'#8a7963',dim:'#50422f',
+  grn:'#5aab4a',grnFt:'rgba(90,171,74,.14)',
+  red:'#c9522a',redFt:'rgba(201,82,42,.14)',
+  blue:'#6f9bbf',blueFt:'rgba(111,155,191,.14)',
+  bd:'rgba(201,168,76,.14)',bdSub:'rgba(201,168,76,.07)',
+};
+const FC="'Cinzel',Georgia,serif";
+const FB="'Crimson Text',Georgia,serif";
+
+const inputSt={
+  background:C.card2,border:`1px solid ${C.goldBd}`,color:C.goldBr,
+  borderRadius:6,padding:'8px 10px',fontFamily:FB,fontSize:14,
+  width:'100%',outline:'none',
+};
+const labelSt={
+  fontFamily:FC,fontSize:9,letterSpacing:'.15em',color:C.sub,
+  marginBottom:5,display:'block',textTransform:'uppercase',
+};
+const btnPrimary={
+  background:C.goldFt,border:`1px solid ${C.goldBd2}`,color:C.goldBr,
+  borderRadius:7,padding:'10px 18px',fontFamily:FC,fontSize:11,
+  letterSpacing:'.15em',textAlign:'center',
+};
+const btnGhost={
+  background:'none',border:`0.5px solid ${C.bd}`,color:C.sub,
+  borderRadius:7,padding:'9px 16px',fontFamily:FC,fontSize:10,letterSpacing:'.1em',
+};
+const btnDanger={
+  background:C.redFt,border:'1px solid rgba(201,82,42,.35)',color:'#e8a98c',
+  borderRadius:6,padding:'7px 12px',fontFamily:FC,fontSize:10,letterSpacing:'.1em',
+};
+
+/* ══ HELPERS ════════════════════════════════════════════════════════════ */
+const fB=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+const fP=(v,d=2)=>v===null||v===undefined?'—':(v>=0?'+':'')+v.toFixed(d)+'%';
+const tIdx=d=>d.year*12+d.month;
+const MN=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const parseNum=s=>{
+  const v=parseFloat(String(s).trim().replace(/\./g,'').replace(',','.'));
+  return isNaN(v)?0:v;
+};
+
+const enrich=months=>{
+  const s=[...months].sort((a,b)=>tIdx(a)-tIdx(b));
+  return s.map((m,i)=>({
+    ...m,
+    evol:i>0?((m.total-s[i-1].total)/s[i-1].total)*100:null,
+    gain:i>0?m.total-s[i-1].total:null,
+    gap:i>0?tIdx(m)-tIdx(s[i-1]):0,
+    prevLabel:i>0?s[i-1].label:null,
+  }));
+};
+
+const yearStats=data=>{
+  const years=[...new Set(data.map(d=>d.year))].sort();
+  return years.map(y=>{
+    const yd=data.filter(d=>d.year===y);
+    const first=yd[0],last=yd[yd.length-1];
+    const prevYear=data.filter(d=>d.year===y-1);
+    const prevEnd=prevYear.length?prevYear[prevYear.length-1]:null;
+    const growth=prevEnd?((last.total-prevEnd.total)/prevEnd.total)*100:
+      ((last.total-first.total)/first.total)*100;
+    return{year:y,first,last,growth,months:yd.length,prevEnd};
+  });
+};
+
+/* ══ ICONS ══════════════════════════════════════════════════════════════ */
+const Ico=({sz=20,co='currentColor',vb='0 0 24 24',ch})=>(
+  <svg width={sz} height={sz} viewBox={vb} fill="none" stroke={co}
+    strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{ch}</svg>
+);
+const HomeIco=p=><Ico {...p} ch={<><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></>}/>;
+const HistIco=p=><Ico {...p} ch={<><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r=".6" fill={p.co||'currentColor'} stroke="none"/><circle cx="3" cy="12" r=".6" fill={p.co||'currentColor'} stroke="none"/><circle cx="3" cy="18" r=".6" fill={p.co||'currentColor'} stroke="none"/></>}/>;
+const BarIco=p=><Ico {...p} ch={<><rect x="18" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="2" y="13" width="4" height="8" rx="1"/></>}/>;
+const UpIco=p=><Ico {...p} ch={<><polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/><polyline points="16,7 22,7 22,13"/></>}/>;
+const DnIco=p=><Ico {...p} ch={<><polyline points="22,17 13.5,8.5 8.5,13.5 2,7"/><polyline points="16,17 22,17 22,11"/></>}/>;
+const ChevDn=p=><Ico {...p} ch={<polyline points="6,9 12,15 18,9"/>}/>;
+const ChevUp=p=><Ico {...p} ch={<polyline points="18,15 12,9 6,15"/>}/>;
+const CheckIco=p=><Ico {...p} ch={<polyline points="20,6 9,17 4,12"/>}/>;
+const CloseIco=p=><Ico {...p} ch={<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}/>;
+const EditIco=p=><Ico {...p} ch={<><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></>}/>;
+const PlusIco=p=><Ico {...p} ch={<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}/>;
+const StarIco=p=><Ico {...p} ch={<polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>}/>;
+const WarnIco=p=><Ico {...p} ch={<><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>}/>;
+const TrashIco=p=><Ico {...p} ch={<><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></>}/>;
+const LockIco=p=><Ico {...p} ch={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}/>;
+const UnlockIco=p=><Ico {...p} ch={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></>}/>;
+const LogOutIco=p=><Ico {...p} ch={<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></>}/>;
+const SaveIco=p=><Ico {...p} ch={<><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></>}/>;
+const WalletIco=p=><Ico {...p} ch={<><path d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-5"/><path d="M16 12h6v4h-6a2 2 0 010-4z"/></>}/>;
+const TargetIco=p=><Ico {...p} ch={<><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill={p.co||'currentColor'}/></>}/>;
+const LayersIco=p=><Ico {...p} ch={<><polygon points="12,2 2,7 12,12 22,7"/><polyline points="2,17 12,22 22,17"/><polyline points="2,12 12,17 22,12"/></>}/>;
+
+/* ══ ATOMS ══════════════════════════════════════════════════════════════ */
+const Pct=({v,sz='md'})=>{
+  if(v===null||v===undefined)return null;
+  const pos=v>=0,fs=sz==='sm'?11:sz==='lg'?17:13;
+  return(
+    <span style={{display:'inline-flex',alignItems:'center',gap:3,
+      background:pos?C.grnFt:C.redFt,color:pos?C.grn:C.red,
+      borderRadius:4,padding:'2px 7px',fontSize:fs,fontFamily:FB,fontWeight:600,
+      border:`0.5px solid ${pos?'rgba(90,171,74,.28)':'rgba(201,82,42,.28)'}`}}>
+      {pos?<UpIco sz={fs-2} co={C.grn}/>:<DnIco sz={fs-2} co={C.red}/>}
+      {' '}{fP(v)}
+    </span>
+  );
+};
+
+const Div=({my=10})=>(
+  <div style={{display:'flex',alignItems:'center',gap:8,margin:`${my}px 0`}}>
+    <div style={{flex:1,height:.5,background:C.bd}}/>
+    <span style={{fontSize:8,color:C.goldFt}}>◆</span>
+    <div style={{flex:1,height:.5,background:C.bd}}/>
+  </div>
+);
+
+const Sec=({ch,mb=12,extra})=>(
+  <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.2em',color:C.sub,
+    textTransform:'uppercase',marginBottom:mb,...extra}}>{ch}</div>
+);
+
+const Toast=({msg,type})=>{
+  if(!msg)return null;
+  const co=type==='error'?C.red:type==='ok'?C.grn:C.gold;
+  const bg=type==='error'?C.redFt:type==='ok'?C.grnFt:C.goldFt;
+  return(
+    <div style={{position:'fixed',bottom:'calc(var(--sab,20px) + 76px)',left:16,right:16,
+      maxWidth:448,margin:'0 auto',background:bg,border:`1px solid ${co}`,
+      borderRadius:8,padding:'10px 14px',fontFamily:FB,fontSize:13,color:co,
+      textAlign:'center',zIndex:200,boxShadow:'0 4px 20px rgba(0,0,0,.4)'}}>
+      {msg}
+    </div>
+  );
+};
+
+/* ══ CHART ══════════════════════════════════════════════════════════════ */
+function HistChart({data,h=180,showYears=true}){
+  if(!data||data.length<2)return null;
+  const W=360,H=h,PX=14,PY=showYears?24:10;
+  const tMin=tIdx(data[0]),tMax=tIdx(data[data.length-1]),tR=tMax-tMin||1;
+  const vMax=Math.max(...data.map(d=>d.total))*1.04;
+  const xOf=d=>PX+(tIdx(d)-tMin)/tR*(W-2*PX);
+  const yOf=d=>H-PY-(d.total/vMax)*(H-PY-8);
+  const pts=data.map(d=>[xOf(d),yOf(d)]);
+
+  const segs=[];let seg=[0];
+  for(let i=1;i<data.length;i++){
+    const g=tIdx(data[i])-tIdx(data[i-1]);
+    if(g>2){segs.push(seg);seg=[i];}else seg.push(i);
+  }
+  segs.push(seg);
+
+  const curvePath=idxs=>idxs.reduce((acc,ii,j)=>{
+    const[x,y]=pts[ii];
+    if(j===0)return`M${x.toFixed(1)} ${y.toFixed(1)}`;
+    const[px,py]=pts[idxs[j-1]];const cx=(px+x)/2;
+    return acc+` C${cx.toFixed(1)} ${py.toFixed(1)} ${cx.toFixed(1)} ${y.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  },'');
+  const areaPath=idxs=>{
+    const cp=curvePath(idxs);
+    const last=pts[idxs[idxs.length-1]],first=pts[idxs[0]];
+    return cp+` L${last[0].toFixed(1)} ${H-PY} L${first[0].toFixed(1)} ${H-PY}Z`;
+  };
+
+  const years=[...new Set(data.map(d=>d.year))];
+  const yearMarks=years.map(y=>{
+    const fd=data.find(d=>d.year===y);
+    return{y,x:xOf(fd)};
+  });
+  const grids=[.25,.5,.75].map(f=>H-PY-f*(H-PY-8));
+
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={h} style={{display:'block',overflow:'visible'}}>
+      <defs>
+        <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#c9a84c" stopOpacity=".22"/>
+          <stop offset="100%" stopColor="#c9a84c" stopOpacity=".01"/>
+        </linearGradient>
+      </defs>
+      {grids.map((gy,i)=>(
+        <line key={i} x1={PX} y1={gy} x2={W-PX} y2={gy}
+          stroke="rgba(201,168,76,.07)" strokeWidth=".5" strokeDasharray="3 5"/>
+      ))}
+      {segs.map((sg,i)=><path key={`a${i}`} d={areaPath(sg)} fill="url(#cg)"/>)}
+      {segs.map((sg,i)=><path key={`l${i}`} d={curvePath(sg)} fill="none" stroke={C.gold} strokeWidth="1.5"/>)}
+      {pts.map(([x,y],i)=>(
+        <g key={i}>
+          <circle cx={x} cy={y} r="5" fill="rgba(201,168,76,.1)"/>
+          <circle cx={x} cy={y} r="2.5" fill={C.gold}/>
+        </g>
+      ))}
+      {showYears&&yearMarks.map(m=>(
+        <text key={m.y} x={m.x} y={H-3} textAnchor="middle"
+          fill={C.dim} fontSize="8" fontFamily="Cinzel,serif">{m.y}</text>
+      ))}
+    </svg>
+  );
+}
+
+/* ══ CATEGORY ALLOCATION ════════════════════════════════════════════════ */
+function categoryBreakdown(snapshot, assets, categories){
+  if(!snapshot)return[];
+  const assetByName={};
+  assets.forEach(a=>{assetByName[a.name]=a;});
+  const sums={};
+  Object.entries(snapshot.assets).forEach(([name,val])=>{
+    const a=assetByName[name];
+    const cid=a?a.category_id:null;
+    sums[cid]=(sums[cid]||0)+val;
+  });
+  const rows=categories.map(c=>({
+    ...c,
+    actual: snapshot.total>0?(sums[c.id]||0)/snapshot.total*100:0,
+    value: sums[c.id]||0,
+  }));
+  const uncategorized=sums[null]||sums[undefined]||0;
+  if(uncategorized>0.005){
+    rows.push({id:null,name:'Sem categoria',color:C.dim,target_percent:0,
+      actual:snapshot.total>0?uncategorized/snapshot.total*100:0,value:uncategorized});
+  }
+  return rows.sort((a,b)=>b.actual-a.actual);
+}
+
+function AllocationBars({rows}){
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {rows.map(r=>{
+        const diff=r.actual-(r.target_percent||0);
+        const overTarget=Math.abs(diff)>3;
+        return(
+          <div key={r.id??'none'}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
+              <span style={{fontFamily:FB,fontSize:13,color:C.txt}}>{r.name}</span>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <span style={{fontFamily:FB,fontSize:13,color:C.gold,fontWeight:600}}>
+                  {r.actual.toFixed(1)}%
+                </span>
+                {r.target_percent>0&&(
+                  <span style={{fontFamily:FB,fontSize:11,color:overTarget?C.red:C.sub}}>
+                    (meta {r.target_percent.toFixed(0)}%)
+                  </span>
+                )}
+              </div>
+            </div>
+            <div style={{position:'relative',height:6,background:C.surf,borderRadius:3}}>
+              <div style={{position:'absolute',left:0,top:0,height:'100%',
+                width:`${Math.min(r.actual,100)}%`,background:r.color||C.gold,
+                borderRadius:3,opacity:.75}}/>
+              {r.target_percent>0&&(
+                <div style={{position:'absolute',left:`${Math.min(r.target_percent,100)}%`,
+                  top:-2,bottom:-2,width:2,background:C.goldBr,opacity:.7}}/>
+              )}
+            </div>
+            <div style={{fontFamily:FB,fontSize:10,color:C.dim,marginTop:2}}>{fB(r.value)}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══ DASHBOARD ══════════════════════════════════════════════════════════ */
+function Dashboard({data,assets,categories}){
+  const cur=data[data.length-1];
+  const first=data[0];
+  const totalGrowth=((cur.total-first.total)/first.total)*100;
+  const totalGain=cur.total-first.total;
+  const ys=yearStats(data);
+  const withEvol=data.filter(d=>d.evol!==null);
+  const best=withEvol.length?withEvol.reduce((a,b)=>a.evol>b.evol?a:b):null;
+  const worst=withEvol.length?withEvol.reduce((a,b)=>a.evol<b.evol?a:b):null;
+  const topAssets=Object.entries(cur.assets).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const allocRows=categoryBreakdown(cur,assets,categories);
+
+  return(
+    <div style={{padding:'18px 16px 8px'}}>
+      <div style={{textAlign:'center',marginBottom:14}}>
+        <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.25em',color:C.sub,marginBottom:6}}>
+          PATRIMÔNIO TOTAL · {cur.label.toUpperCase()}
+        </div>
+        <div style={{fontFamily:FC,fontSize:30,fontWeight:700,color:C.goldBr,lineHeight:1.1,letterSpacing:'-.01em'}}>
+          {fB(cur.total)}
+        </div>
+        <div style={{marginTop:8,display:'flex',justifyContent:'center',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          {cur.evol!==null&&<Pct v={cur.evol}/>}
+          {cur.gain!==null&&(
+            <span style={{color:C.sub,fontSize:13,fontFamily:FB}}>
+              {cur.gain>=0?'+':''}{fB(cur.gain)} vs {cur.prevLabel}
+            </span>
+          )}
+        </div>
+        {cur.contribution!==null&&cur.contribution!==undefined&&cur.contribution!==0&&(
+          <div style={{marginTop:6,fontFamily:FB,fontSize:12,color:C.blue}}>
+            Aporte do mês: {fB(cur.contribution)}{cur.contributionNote?` · ${cur.contributionNote}`:''}
+          </div>
+        )}
+      </div>
+
+      <div style={{background:C.surf,border:`0.5px solid ${C.goldBd}`,borderRadius:10,
+        padding:'12px 14px',marginBottom:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.15em',color:C.sub,marginBottom:4}}>
+              DESDE {first.label.toUpperCase()}
+            </div>
+            <div style={{fontFamily:FC,fontSize:22,fontWeight:700,color:C.grn}}>
+              {fP(totalGrowth,1)}
+            </div>
+            <div style={{fontFamily:FB,fontSize:13,color:C.sub,marginTop:2}}>
+              +{fB(totalGain)} acumulado
+            </div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.15em',color:C.sub,marginBottom:4}}>
+              MESES REGISTRADOS
+            </div>
+            <div style={{fontFamily:FC,fontSize:22,fontWeight:700,color:C.gold}}>
+              {data.length}
+            </div>
+            <div style={{fontFamily:FB,fontSize:13,color:C.sub,marginTop:2}}>
+              {first.label} → {cur.label}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Sec ch="Evolução Histórica"/>
+      <div style={{marginBottom:4}}>
+        <HistChart data={data} h={170}/>
+      </div>
+
+      <Div my={14}/>
+
+      <Sec ch="Crescimento por Ano"/>
+      <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14}}>
+        {ys.map(y=>(
+          <div key={y.year} style={{
+            background:C.surf,border:`0.5px solid ${C.bd}`,borderRadius:8,
+            padding:'9px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <span style={{fontFamily:FC,fontSize:13,fontWeight:600,color:C.txt}}>{y.year}</span>
+              <span style={{fontFamily:FB,fontSize:12,color:C.sub,marginLeft:8}}>
+                {y.prevEnd?`${y.prevEnd.label} → ${y.last.label}`:`${y.first.label} → ${y.last.label}`}
+              </span>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontFamily:FB,fontSize:12,color:C.sub}}>{y.months} meses</span>
+              <Pct v={y.growth}/>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Div my={14}/>
+
+      {allocRows.length>0&&(
+        <>
+          <Sec ch={`Alocação por Categoria · ${cur.label}`}/>
+          <div style={{marginBottom:14}}>
+            <AllocationBars rows={allocRows}/>
+          </div>
+          <Div my={14}/>
+        </>
+      )}
+
+      <Sec ch="Destaques"/>
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:14}}>
+        {best&&(
+          <div style={{background:C.grnFt,border:'0.5px solid rgba(90,171,74,.22)',
+            borderRadius:8,padding:'10px 13px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <StarIco sz={15} co={C.grn}/>
+              <div>
+                <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.1em',color:C.grn}}>MELHOR MÊS</div>
+                <div style={{fontFamily:FB,fontSize:14,color:C.txt,marginTop:1}}>{best.label}
+                  {best.gap>1&&<span style={{color:C.sub,fontSize:11}}> (+{best.gap}m)</span>}</div>
+              </div>
+            </div>
+            <Pct v={best.evol}/>
+          </div>
+        )}
+        {worst&&(
+          <div style={{background:C.redFt,border:'0.5px solid rgba(201,82,42,.22)',
+            borderRadius:8,padding:'10px 13px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <WarnIco sz={15} co={C.red}/>
+              <div>
+                <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.1em',color:C.red}}>PIOR MÊS</div>
+                <div style={{fontFamily:FB,fontSize:14,color:C.txt,marginTop:1}}>{worst.label}</div>
+              </div>
+            </div>
+            <Pct v={worst.evol}/>
+          </div>
+        )}
+      </div>
+
+      <Sec ch={`Posições Atuais · ${cur.label}`}/>
+      <div style={{display:'flex',flexDirection:'column',gap:7,marginBottom:8}}>
+        {topAssets.map(([name,val])=>{
+          const pct=(val/cur.total)*100;
+          return(
+            <div key={name}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:3}}>
+                <span style={{fontFamily:FB,fontSize:13,color:C.txt,flex:1,minWidth:0,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:8}}>{name}</span>
+                <span style={{fontFamily:FB,fontSize:13,color:C.gold,fontWeight:600,whiteSpace:'nowrap'}}>{fB(val)}</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <div style={{flex:1,height:3,background:C.surf,borderRadius:2}}>
+                  <div style={{width:`${pct}%`,height:'100%',background:C.gold,borderRadius:2,opacity:.6}}/>
+                </div>
+                <span style={{fontFamily:FB,fontSize:9,color:C.dim,minWidth:28,textAlign:'right'}}>{pct.toFixed(1)}%</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ══ TIMELINE (somente leitura) ════════════════════════════════════════ */
+function Timeline({data}){
+  const years=[...new Set(data.map(d=>d.year))].sort((a,b)=>b-a);
+  const [expYear,setExpYear]=useState(years[0]);
+  const [expMonth,setExpMonth]=useState(data[data.length-1]?.id);
+
+  return(
+    <div style={{padding:'18px 16px 8px'}}>
+      <Sec ch="Histórico Completo" mb={14}/>
+      {years.map(y=>{
+        const yd=data.filter(d=>d.year===y).reverse();
+        const yFirst=yd[yd.length-1],yLast=yd[0];
+        const yGrowth=((yLast.total-yFirst.total)/yFirst.total)*100;
+        const isExpY=expYear===y;
+        return(
+          <div key={y} style={{marginBottom:12}}>
+            <button onClick={()=>setExpYear(isExpY?null:y)}
+              style={{width:'100%',background:C.surf,border:`0.5px solid ${isExpY?C.goldBd2:C.bd}`,
+                borderRadius:10,padding:'11px 14px',display:'flex',alignItems:'center',
+                justifyContent:'space-between',marginBottom:isExpY?6:0}}>
+              <div style={{textAlign:'left'}}>
+                <div style={{fontFamily:FC,fontSize:16,fontWeight:700,color:isExpY?C.goldBr:C.txt}}>
+                  {y}
+                </div>
+                <div style={{fontFamily:FB,fontSize:12,color:C.sub,marginTop:1}}>
+                  {yFirst.label} → {yLast.label} · {yd.length} meses
+                </div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <Pct v={yGrowth} sz="sm"/>
+                {isExpY?<ChevUp sz={14} co={C.sub}/>:<ChevDn sz={14} co={C.sub}/>}
+              </div>
+            </button>
+
+            {isExpY&&yd.map(m=>{
+              const isExpM=expMonth===m.id;
+              return(
+                <div key={m.id} style={{background:C.card,border:`0.5px solid ${isExpM?C.goldBd2:C.bdSub}`,
+                  borderRadius:8,marginBottom:5,overflow:'hidden',marginLeft:4}}>
+                  <button onClick={()=>setExpMonth(isExpM?null:m.id)}
+                    style={{width:'100%',background:'none',border:'none',padding:'10px 13px',
+                      display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                    <div style={{textAlign:'left'}}>
+                      <div style={{fontFamily:FC,fontSize:12,fontWeight:600,color:isExpM?C.goldBr:C.txt}}>
+                        {m.label}
+                      </div>
+                      <div style={{fontFamily:FB,fontSize:15,color:C.gold,fontWeight:600,marginTop:1}}>
+                        {fB(m.total)}
+                      </div>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:7}}>
+                      {m.evol!==null&&<Pct v={m.evol} sz="sm"/>}
+                      {isExpM?<ChevUp sz={13} co={C.sub}/>:<ChevDn sz={13} co={C.sub}/>}
+                    </div>
+                  </button>
+
+                  {isExpM&&(
+                    <div style={{borderTop:`0.5px solid ${C.bd}`,paddingBottom:8}}>
+                      {m.evol!==null&&(
+                        <div style={{padding:'6px 13px 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <span style={{fontFamily:FB,fontSize:11,color:C.sub,fontStyle:'italic'}}>
+                            vs {m.prevLabel}
+                            {m.gap>1&&<span style={{color:C.dim}}> ({m.gap} meses)</span>}
+                          </span>
+                          <span style={{fontFamily:FB,fontSize:12,color:m.gain>=0?C.grn:C.red}}>
+                            {m.gain>=0?'+':''}{fB(m.gain)}
+                          </span>
+                        </div>
+                      )}
+                      {m.contribution!==null&&m.contribution!==undefined&&m.contribution!==0&&(
+                        <div style={{padding:'2px 13px 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <span style={{fontFamily:FB,fontSize:11,color:C.blue,fontStyle:'italic'}}>
+                            Aporte {m.contributionNote?`(${m.contributionNote})`:''}
+                          </span>
+                          <span style={{fontFamily:FB,fontSize:12,color:C.blue}}>{fB(m.contribution)}</span>
+                        </div>
+                      )}
+                      {Object.entries(m.assets).map(([k,v])=>{
+                        const pct=(v/m.total)*100;
+                        return(
+                          <div key={k} style={{padding:'6px 13px',borderBottom:`0.5px solid ${C.bdSub}`}}>
+                            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
+                              <span style={{fontFamily:FB,fontSize:12,color:C.sub,flex:1,minWidth:0,
+                                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{k}</span>
+                              <span style={{fontFamily:FB,fontSize:13,color:C.txt,fontWeight:600}}>{fB(v)}</span>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:5,marginTop:3}}>
+                              <div style={{flex:1,height:2,background:C.bdSub,borderRadius:1}}>
+                                <div style={{width:`${pct}%`,height:'100%',background:C.gold,borderRadius:1,opacity:.5}}/>
+                              </div>
+                              <span style={{fontFamily:FB,fontSize:9,color:C.dim,minWidth:24,textAlign:'right'}}>
+                                {pct.toFixed(1)}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div style={{padding:'8px 13px 2px',display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontFamily:FC,fontSize:10,color:C.sub,letterSpacing:'.1em'}}>TOTAL</span>
+                        <span style={{fontFamily:FC,fontSize:13,fontWeight:700,color:C.goldBr}}>{fB(m.total)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══ ANALYSIS ═══════════════════════════════════════════════════════════ */
+function Analysis({data,assets,categories}){
+  const years=[...new Set(data.map(d=>d.year))].sort();
+  const [period,setPeriod]=useState('all');
+
+  const filtered=useMemo(()=>{
+    if(period==='all')return data;
+    if(period==='12m')return data.slice(-12);
+    if(period==='6m')return data.slice(-6);
+    return data.filter(d=>d.year===parseInt(period));
+  },[data,period]);
+
+  const first=filtered[0],last=filtered[filtered.length-1];
+  const totalG=filtered.length>1?((last.total-first.total)/first.total)*100:0;
+  const we=filtered.filter(d=>d.evol!==null);
+  const avgG=we.length?we.reduce((s,d)=>s+d.evol,0)/we.length:0;
+  const totalGain=last.total-first.total;
+  const totalContrib=filtered.reduce((s,d)=>s+(d.contribution||0),0);
+
+  const periods=[
+    {l:'Tudo',v:'all'},
+    {l:'12M',v:'12m'},
+    {l:'6M',v:'6m'},
+    ...years.map(y=>({l:String(y),v:String(y)})),
+  ];
+
+  const assetEvol=first.id!==last.id?
+    [...new Set([...Object.keys(first.assets),...Object.keys(last.assets)])]
+      .map(k=>({
+        name:k,
+        start:first.assets[k]||0,
+        end:last.assets[k]||0,
+        delta:(last.assets[k]||0)-(first.assets[k]||0),
+        pct:first.assets[k]?((last.assets[k]||0)-(first.assets[k]||0))/first.assets[k]*100:null,
+      }))
+      .filter(a=>a.end>0||a.start>0)
+      .sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta))
+    :[];
+
+  const allocRows=categoryBreakdown(last,assets,categories);
+
+  return(
+    <div style={{padding:'18px 16px 8px'}}>
+      <div style={{display:'flex',gap:5,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
+        <Sec ch="Período" mb={0} extra={{marginRight:4}}/>
+        {periods.map(p=>{
+          const active=period===p.v;
+          return(
+            <button key={p.v} onClick={()=>setPeriod(p.v)} style={{
+              background:active?C.goldFt:'none',
+              border:`0.5px solid ${active?C.goldBd2:C.bd}`,
+              color:active?C.goldBr:C.sub,borderRadius:6,padding:'5px 11px',
+              fontFamily:FC,fontSize:10,letterSpacing:'.1em'}}>
+              {p.l}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16}}>
+        {[
+          {l:'Crescimento Total',v:fP(totalG),co:totalG>=0?C.grn:C.red},
+          {l:'Média Mensal',v:fP(avgG),co:avgG>=0?C.grn:C.red},
+          {l:'Ganho no Período',v:fB(totalGain),co:totalGain>=0?C.gold:C.red},
+          {l:'Aportes no Período',v:fB(totalContrib),co:C.blue},
+        ].map(s=>(
+          <div key={s.l} style={{background:C.surf,border:`0.5px solid ${C.bd}`,borderRadius:8,padding:'10px 12px'}}>
+            <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.1em',color:C.sub,marginBottom:5}}>{s.l}</div>
+            <div style={{fontFamily:FC,fontSize:14,fontWeight:600,color:s.co}}>{s.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <Sec ch={`${first.label} → ${last.label}`}/>
+      <div style={{marginBottom:16}}>
+        <HistChart data={filtered} h={180} showYears={period==='all'||period==='12m'}/>
+      </div>
+
+      <Div my={12}/>
+
+      {allocRows.length>0&&(
+        <>
+          <Sec ch={`Alocação Atual vs. Meta · ${last.label}`}/>
+          <div style={{marginBottom:16}}>
+            <AllocationBars rows={allocRows}/>
+          </div>
+          <Div my={12}/>
+        </>
+      )}
+
+      {assetEvol.length>0&&first.id!==last.id&&(
+        <>
+          <Sec ch={`Ativos: ${first.label} → ${last.label}`}/>
+          <div style={{display:'flex',flexDirection:'column'}}>
+            {assetEvol.map(a=>(
+              <div key={a.name} style={{padding:'8px 4px',borderBottom:`0.5px solid ${C.bdSub}`}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+                  <span style={{fontFamily:FB,fontSize:13,color:C.txt,flex:1,paddingRight:8,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</span>
+                  {a.pct!==null?<Pct v={a.pct} sz="sm"/>:
+                    <span style={{fontFamily:FB,fontSize:11,color:C.sub}}>novo</span>}
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between'}}>
+                  <span style={{fontFamily:FB,fontSize:11,color:C.dim}}>{fB(a.start)}</span>
+                  <span style={{fontFamily:FB,fontSize:12,color:a.delta>=0?C.grn:C.red}}>
+                    {a.delta>=0?'+':''}{fB(a.delta)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ══ LOGIN ══════════════════════════════════════════════════════════════ */
+function LoginForm({onLogin,busy,error}){
+  const [email,setEmail]=useState('');
+  const [pw,setPw]=useState('');
+  return(
+    <div style={{padding:'40px 16px'}}>
+      <div style={{textAlign:'center',marginBottom:24}}>
+        <LockIco sz={28} co={C.gold}/>
+        <div style={{fontFamily:FC,fontSize:13,letterSpacing:'.2em',color:C.goldBr,marginTop:10}}>
+          ACESSO ADMINISTRATIVO
+        </div>
+        <div style={{fontFamily:FB,fontSize:13,color:C.sub,marginTop:6}}>
+          Entre com sua conta para editar os dados
+        </div>
+      </div>
+      <form onSubmit={e=>{e.preventDefault();onLogin(email,pw);}}
+        style={{display:'flex',flexDirection:'column',gap:12,maxWidth:340,margin:'0 auto'}}>
+        <div>
+          <label style={labelSt}>E-mail</label>
+          <input type="email" autoComplete="username" value={email}
+            onChange={e=>setEmail(e.target.value)} style={inputSt} required/>
+        </div>
+        <div>
+          <label style={labelSt}>Senha</label>
+          <input type="password" autoComplete="current-password" value={pw}
+            onChange={e=>setPw(e.target.value)} style={inputSt} required/>
+        </div>
+        {error&&(
+          <div style={{color:C.red,fontFamily:FB,fontSize:12,textAlign:'center'}}>{error}</div>
+        )}
+        <button type="submit" disabled={busy} style={{...btnPrimary,marginTop:6,opacity:busy?.6:1}}>
+          {busy?'ENTRANDO...':'ENTRAR'}
+        </button>
+      </form>
+      <div style={{fontFamily:FB,fontSize:11,color:C.dim,textAlign:'center',marginTop:20,lineHeight:1.6}}>
+        O usuário administrador é criado no painel do Supabase<br/>
+        (Authentication → Users → Add user).<br/>
+        Veja o README para o passo a passo.
+      </div>
+    </div>
+  );
+}
+
+/* ══ ADMIN: ATIVOS ══════════════════════════════════════════════════════ */
+function AdminAssets({assets,categories,api,notify}){
+  const [newName,setNewName]=useState('');
+  const [newCat,setNewCat]=useState(categories[0]?.id??'');
+  const [editing,setEditing]=useState(null);
+
+  const add=async()=>{
+    if(!newName.trim())return;
+    const res=await api.addAsset(newName.trim(),newCat||null);
+    if(res.ok){setNewName('');notify('Ativo adicionado.','ok');}
+    else notify(res.error,'error');
+  };
+
+  const save=async(id,fields)=>{
+    const res=await api.updateAsset(id,fields);
+    if(res.ok)notify('Ativo atualizado.','ok');
+    else notify(res.error,'error');
+    setEditing(null);
+  };
+
+  const remove=async(asset)=>{
+    if(!window.confirm(`Excluir "${asset.name}"? Isso remove TODOS os valores históricos deste ativo. Esta ação não pode ser desfeita.`))return;
+    const res=await api.deleteAsset(asset.id);
+    if(res.ok)notify('Ativo excluído.','ok');
+    else notify(res.error,'error');
+  };
+
+  return(
+    <div>
+      <Sec ch="Adicionar Novo Ativo"/>
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
+        <input placeholder="Nome do ativo (ex: Itaú, Avenue...)" value={newName}
+          onChange={e=>setNewName(e.target.value)} style={inputSt}/>
+        <select value={newCat} onChange={e=>setNewCat(e.target.value)} style={inputSt}>
+          <option value="">Sem categoria</option>
+          {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <button onClick={add} style={btnPrimary}>
+          <PlusIco sz={12} co={C.goldBr} style={{verticalAlign:'-2px',marginRight:4}}/> ADICIONAR ATIVO
+        </button>
+      </div>
+
+      <Div my={12}/>
+
+      <Sec ch={`Ativos Cadastrados (${assets.length})`}/>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {assets.map(a=>{
+          const isEd=editing===a.id;
+          return(
+            <div key={a.id} style={{background:C.surf,border:`0.5px solid ${C.bd}`,
+              borderRadius:8,padding:'10px 12px'}}>
+              {isEd?(
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  <input defaultValue={a.name} id={`nm-${a.id}`} style={inputSt}/>
+                  <select defaultValue={a.category_id??''} id={`cat-${a.id}`} style={inputSt}>
+                    <option value="">Sem categoria</option>
+                    {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <label style={{display:'flex',alignItems:'center',gap:8,fontFamily:FB,fontSize:13,color:C.txt}}>
+                    <input type="checkbox" defaultChecked={a.active} id={`act-${a.id}`}
+                      style={{width:16,height:16,accentColor:C.gold}}/>
+                    Ativo (aparece em novos meses)
+                  </label>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>{
+                      const name=document.getElementById(`nm-${a.id}`).value.trim();
+                      const cat=document.getElementById(`cat-${a.id}`).value;
+                      const act=document.getElementById(`act-${a.id}`).checked;
+                      save(a.id,{name,category_id:cat||null,active:act});
+                    }} style={{...btnPrimary,flex:1}}>SALVAR</button>
+                    <button onClick={()=>setEditing(null)} style={{...btnGhost,flex:1}}>CANCELAR</button>
+                  </div>
+                </div>
+              ):(
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:FB,fontSize:14,color:C.txt,fontWeight:600,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {a.name}
+                      {!a.active&&<span style={{color:C.dim,fontSize:11,marginLeft:6}}>(inativo)</span>}
+                    </div>
+                    <div style={{fontFamily:FB,fontSize:11,color:C.sub,marginTop:2}}>
+                      {categories.find(c=>c.id===a.category_id)?.name||'Sem categoria'}
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:6,flexShrink:0}}>
+                    <button onClick={()=>setEditing(a.id)} style={{padding:6,opacity:.7}}>
+                      <EditIco sz={15} co={C.gold}/>
+                    </button>
+                    <button onClick={()=>remove(a)} style={{padding:6,opacity:.7}}>
+                      <TrashIco sz={15} co={C.red}/>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ══ ADMIN: PATRIMÔNIO (lançar valores mensais) ════════════════════════ */
+function AdminPatrimonio({data,assets,api,notify}){
+  const sorted=[...data].sort((a,b)=>tIdx(b)-tIdx(a));
+  const [selId,setSelId]=useState(sorted[0]?.id);
+  const [draft,setDraft]=useState({});
+  const [mode,setMode]=useState('existing'); // existing | new
+
+  const selected=data.find(d=>d.id===selId);
+
+  useEffect(()=>{
+    if(selected){
+      const d={};
+      assets.filter(a=>a.active||selected.assets[a.name]!==undefined).forEach(a=>{
+        d[a.name]=selected.assets[a.name]!==undefined?
+          String(selected.assets[a.name]).replace('.',','):'';
+      });
+      setDraft(d);
+    }
+  },[selId]);
+
+  const last=sorted[0];
+  const nextMonth=last?(last.month===12?1:last.month+1):new Date().getMonth()+1;
+  const nextYear=last?(last.month===12?last.year+1:last.year):new Date().getFullYear();
+  const nextLabel=`${MN[nextMonth]} ${nextYear}`;
+
+  const startNew=()=>{
+    setMode('new');
+    const d={};
+    assets.filter(a=>a.active).forEach(a=>{
+      d[a.name]=last&&last.assets[a.name]!==undefined?
+        String(last.assets[a.name]).replace('.',','):'';
+    });
+    setDraft(d);
+  };
+
+  const total=Object.values(draft).reduce((s,v)=>s+parseNum(v),0);
+
+  const save=async()=>{
+    const valuesMap={};
+    Object.entries(draft).forEach(([name,v])=>{
+      const num=parseNum(v);
+      if(v!==''&&!isNaN(num))valuesMap[name]=num;
+    });
+
+    if(mode==='new'){
+      const res=await api.createSnapshot(nextYear,nextMonth,nextLabel,valuesMap);
+      if(res.ok){notify(`${nextLabel} salvo com sucesso.`,'ok');setMode('existing');setSelId(res.id);}
+      else notify(res.error,'error');
+    }else{
+      const res=await api.saveSnapshotValues(selected.id,valuesMap);
+      if(res.ok)notify(`${selected.label} atualizado.`,'ok');
+      else notify(res.error,'error');
+    }
+  };
+
+  const assetList=mode==='new'
+    ?assets.filter(a=>a.active)
+    :assets.filter(a=>a.active||selected?.assets[a.name]!==undefined);
+
+  return(
+    <div>
+      <Sec ch="Selecionar Mês"/>
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        <select value={mode==='new'?'__new__':selId}
+          onChange={e=>{
+            if(e.target.value==='__new__')startNew();
+            else{setMode('existing');setSelId(parseInt(e.target.value));}
+          }}
+          style={{...inputSt,flex:1}}>
+          {sorted.map(m=><option key={m.id} value={m.id}>{m.label} — {fB(m.total)}</option>)}
+          <option value="__new__">+ Novo mês ({nextLabel})</option>
+        </select>
+      </div>
+
+      {mode==='new'&&(
+        <div style={{background:C.goldFt,border:`1px solid ${C.goldBd2}`,borderRadius:8,
+          padding:'10px 13px',marginBottom:14,fontFamily:FB,fontSize:12,color:C.goldBr}}>
+          Criando snapshot de <strong>{nextLabel}</strong>. Os valores foram pré-preenchidos
+          com o mês anterior — ajuste cada um.
+        </div>
+      )}
+
+      <Sec ch="Valores por Ativo"/>
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:14}}>
+        {assetList.map(a=>(
+          <div key={a.id} style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontFamily:FB,fontSize:13,color:C.txt,flex:1,minWidth:0,
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</span>
+            <div style={{display:'flex',alignItems:'center',gap:4,width:150}}>
+              <span style={{fontFamily:FB,fontSize:12,color:C.sub}}>R$</span>
+              <input value={draft[a.name]??''}
+                onChange={e=>setDraft(d=>({...d,[a.name]:e.target.value}))}
+                placeholder="0,00" style={{...inputSt,textAlign:'right'}}/>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{background:C.surf,border:`0.5px solid ${C.goldBd}`,borderRadius:8,
+        padding:'12px 14px',marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{fontFamily:FC,fontSize:10,letterSpacing:'.15em',color:C.sub}}>TOTAL CALCULADO</span>
+        <span style={{fontFamily:FC,fontSize:18,fontWeight:700,color:C.goldBr}}>{fB(total)}</span>
+      </div>
+
+      <button onClick={save} style={{...btnPrimary,width:'100%',display:'flex',
+        alignItems:'center',justifyContent:'center',gap:6}}>
+        <SaveIco sz={14} co={C.goldBr}/> SALVAR {mode==='new'?nextLabel.toUpperCase():selected?.label.toUpperCase()}
+      </button>
+    </div>
+  );
+}
+
+/* ══ ADMIN: APORTES ═════════════════════════════════════════════════════ */
+function AdminAportes({data,api,notify}){
+  const sorted=[...data].sort((a,b)=>tIdx(b)-tIdx(a));
+  const [selId,setSelId]=useState(sorted[0]?.id);
+  const selected=data.find(d=>d.id===selId);
+  const [amount,setAmount]=useState('');
+  const [note,setNote]=useState('');
+
+  useEffect(()=>{
+    if(selected){
+      setAmount(selected.contribution!=null?String(selected.contribution).replace('.',','):'');
+      setNote(selected.contributionNote||'');
+    }
+  },[selId]);
+
+  const save=async()=>{
+    const val=parseNum(amount);
+    const res=await api.saveContribution(selected.id,val,note);
+    if(res.ok)notify(`Aporte de ${selected.label} salvo.`,'ok');
+    else notify(res.error,'error');
+  };
+
+  const totalContrib=data.reduce((s,d)=>s+(d.contribution||0),0);
+
+  return(
+    <div>
+      <Sec ch="Aportes Mensais"/>
+      <div style={{background:C.surf,border:`0.5px solid ${C.bd}`,borderRadius:8,
+        padding:'10px 13px',marginBottom:16,display:'flex',justifyContent:'space-between'}}>
+        <span style={{fontFamily:FB,fontSize:12,color:C.sub}}>Total de aportes registrados</span>
+        <span style={{fontFamily:FB,fontSize:14,color:C.blue,fontWeight:600}}>{fB(totalContrib)}</span>
+      </div>
+
+      <label style={labelSt}>Mês</label>
+      <select value={selId} onChange={e=>setSelId(parseInt(e.target.value))}
+        style={{...inputSt,marginBottom:12}}>
+        {sorted.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
+      </select>
+
+      <label style={labelSt}>Valor aportado (R$)</label>
+      <input value={amount} onChange={e=>setAmount(e.target.value)}
+        placeholder="0,00" style={{...inputSt,marginBottom:12}}/>
+
+      <label style={labelSt}>Observação (opcional)</label>
+      <input value={note} onChange={e=>setNote(e.target.value)}
+        placeholder="ex: aporte extra do 13º salário" style={{...inputSt,marginBottom:16}}/>
+
+      <button onClick={save} style={{...btnPrimary,width:'100%',display:'flex',
+        alignItems:'center',justifyContent:'center',gap:6}}>
+        <SaveIco sz={14} co={C.goldBr}/> SALVAR APORTE — {selected?.label.toUpperCase()}
+      </button>
+    </div>
+  );
+}
+
+/* ══ ADMIN: CATEGORIAS ══════════════════════════════════════════════════ */
+function AdminCategorias({categories,api,notify}){
+  const [drafts,setDrafts]=useState(()=>{
+    const d={};
+    categories.forEach(c=>{d[c.id]={target:String(c.target_percent),color:c.color,name:c.name};});
+    return d;
+  });
+  const [newName,setNewName]=useState('');
+  const [newTarget,setNewTarget]=useState('');
+  const [newColor,setNewColor]=useState('#c9a84c');
+
+  const sumTargets=categories.reduce((s,c)=>s+(parseFloat(drafts[c.id]?.target)||0),0);
+
+  const save=async(c)=>{
+    const d=drafts[c.id];
+    const res=await api.updateCategory(c.id,{
+      name:d.name.trim()||c.name,
+      target_percent:parseFloat(d.target)||0,
+      color:d.color,
+    });
+    if(res.ok)notify('Categoria atualizada.','ok');
+    else notify(res.error,'error');
+  };
+
+  const remove=async(c)=>{
+    if(!window.confirm(`Excluir categoria "${c.name}"? Os ativos ficarão sem categoria.`))return;
+    const res=await api.deleteCategory(c.id);
+    if(res.ok)notify('Categoria excluída.','ok');
+    else notify(res.error,'error');
+  };
+
+  const add=async()=>{
+    if(!newName.trim())return;
+    const res=await api.addCategory(newName.trim(),newColor,parseFloat(newTarget)||0);
+    if(res.ok){setNewName('');setNewTarget('');notify('Categoria adicionada.','ok');}
+    else notify(res.error,'error');
+  };
+
+  return(
+    <div>
+      <Sec ch="Percentuais-Alvo por Categoria"/>
+      <div style={{background:sumTargets===100?C.grnFt:C.goldFt,
+        border:`1px solid ${sumTargets===100?'rgba(90,171,74,.3)':C.goldBd2}`,
+        borderRadius:8,padding:'9px 13px',marginBottom:14,fontFamily:FB,fontSize:12,
+        color:sumTargets===100?C.grn:C.goldBr,textAlign:'center'}}>
+        Soma das metas: {sumTargets.toFixed(1)}% {sumTargets!==100&&'(ideal: 100%)'}
+      </div>
+
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:18}}>
+        {categories.map(c=>(
+          <div key={c.id} style={{background:C.surf,border:`0.5px solid ${C.bd}`,
+            borderRadius:8,padding:'10px 12px'}}>
+            <div style={{display:'flex',gap:8,marginBottom:8}}>
+              <input value={drafts[c.id]?.name??c.name}
+                onChange={e=>setDrafts(d=>({...d,[c.id]:{...d[c.id],name:e.target.value}}))}
+                style={{...inputSt,flex:1}}/>
+              <input type="color" value={drafts[c.id]?.color??c.color}
+                onChange={e=>setDrafts(d=>({...d,[c.id]:{...d[c.id],color:e.target.value}}))}
+                style={{width:40,height:36,padding:2,border:`1px solid ${C.goldBd}`,
+                  borderRadius:6,background:C.card2}}/>
+            </div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <span style={{fontFamily:FB,fontSize:12,color:C.sub,flexShrink:0}}>Meta:</span>
+              <input value={drafts[c.id]?.target??String(c.target_percent)}
+                onChange={e=>setDrafts(d=>({...d,[c.id]:{...d[c.id],target:e.target.value}}))}
+                style={{...inputSt,flex:1}}/>
+              <span style={{fontFamily:FB,fontSize:12,color:C.sub,flexShrink:0}}>%</span>
+              <button onClick={()=>save(c)} style={{...btnGhost,flexShrink:0,padding:'8px 10px'}}>
+                <SaveIco sz={13} co={C.gold}/>
+              </button>
+              <button onClick={()=>remove(c)} style={{...btnGhost,flexShrink:0,padding:'8px 10px'}}>
+                <TrashIco sz={13} co={C.red}/>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Div my={12}/>
+
+      <Sec ch="Nova Categoria"/>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        <input placeholder="Nome (ex: Previdência)" value={newName}
+          onChange={e=>setNewName(e.target.value)} style={inputSt}/>
+        <div style={{display:'flex',gap:8}}>
+          <input placeholder="Meta % (ex: 10)" value={newTarget}
+            onChange={e=>setNewTarget(e.target.value)} style={{...inputSt,flex:1}}/>
+          <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
+            style={{width:44,height:36,padding:2,border:`1px solid ${C.goldBd}`,
+              borderRadius:6,background:C.card2}}/>
+        </div>
+        <button onClick={add} style={btnPrimary}>
+          <PlusIco sz={12} co={C.goldBr} style={{verticalAlign:'-2px',marginRight:4}}/> ADICIONAR CATEGORIA
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══ ADMIN ROOT ═════════════════════════════════════════════════════════ */
+function Admin({session,onLogin,onLogout,authBusy,authError,data,assets,categories,api,notify}){
+  const [tab,setTab]=useState('patrimonio');
+
+  if(!session){
+    return <LoginForm onLogin={onLogin} busy={authBusy} error={authError}/>;
+  }
+
+  const tabs=[
+    {id:'patrimonio',label:'Patrimônio',Ico:WalletIco},
+    {id:'aportes',label:'Aportes',Ico:LayersIco},
+    {id:'ativos',label:'Ativos',Ico:EditIco},
+    {id:'categorias',label:'Categorias',Ico:TargetIco},
+  ];
+
+  return(
+    <div style={{padding:'18px 16px 8px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <UnlockIco sz={14} co={C.gold}/>
+          <span style={{fontFamily:FC,fontSize:11,letterSpacing:'.15em',color:C.goldBr}}>
+            {session.user?.email}
+          </span>
+        </div>
+        <button onClick={onLogout} style={{...btnGhost,display:'flex',alignItems:'center',gap:5}}>
+          <LogOutIco sz={12} co={C.sub}/> SAIR
+        </button>
+      </div>
+
+      <div style={{display:'flex',gap:5,marginBottom:18,overflowX:'auto',paddingBottom:2}}>
+        {tabs.map(t=>{
+          const active=tab===t.id;
+          return(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{
+              background:active?C.goldFt:'none',
+              border:`0.5px solid ${active?C.goldBd2:C.bd}`,
+              color:active?C.goldBr:C.sub,borderRadius:7,padding:'7px 13px',
+              display:'flex',alignItems:'center',gap:5,whiteSpace:'nowrap',flexShrink:0,
+              fontFamily:FC,fontSize:10,letterSpacing:'.1em'}}>
+              <t.Ico sz={13} co={active?C.goldBr:C.sub}/> {t.label.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab==='patrimonio'&&<AdminPatrimonio data={data} assets={assets} api={api} notify={notify}/>}
+      {tab==='aportes'&&<AdminAportes data={data} api={api} notify={notify}/>}
+      {tab==='ativos'&&<AdminAssets assets={assets} categories={categories} api={api} notify={notify}/>}
+      {tab==='categorias'&&<AdminCategorias categories={categories} api={api} notify={notify}/>}
+    </div>
+  );
+}
+
+/* ══ NAV ════════════════════════════════════════════════════════════════ */
+function BottomNav({view,setView,session}){
+  const tabs=[
+    {id:'dash',label:'INÍCIO',Ico:HomeIco},
+    {id:'hist',label:'HISTÓRICO',Ico:HistIco},
+    {id:'anal',label:'ANÁLISE',Ico:BarIco},
+    {id:'admin',label:'ADMIN',Ico:session?UnlockIco:LockIco},
+  ];
+  return(
+    <div style={{position:'fixed',bottom:0,left:0,right:0,
+      background:C.surf,borderTop:`0.5px solid ${C.goldBd}`,
+      display:'flex',justifyContent:'space-around',alignItems:'center',
+      paddingBottom:'var(--sab,16px)',paddingTop:8,zIndex:100}}>
+      {tabs.map(({id,label,Ico})=>{
+        const a=view===id;
+        return(
+          <button key={id} onClick={()=>setView(id)}
+            style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,
+              padding:'4px 14px',minHeight:44,minWidth:60}}>
+            <Ico sz={20} co={a?C.goldBr:C.dim}/>
+            <span style={{fontFamily:FC,fontSize:8,letterSpacing:'.12em',color:a?C.goldBr:C.dim}}>
+              {label}
+            </span>
+            {a&&<div style={{width:18,height:1.5,background:C.gold,borderRadius:1,marginTop:1}}/>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══ SETUP / ERROR / EMPTY SCREENS ══════════════════════════════════════ */
+function CenterScreen({title,children,Ico}){
+  return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',
+      padding:24,background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)'}}>
+      <div style={{maxWidth:380,textAlign:'center'}}>
+        {Ico&&<div style={{marginBottom:14}}><Ico sz={28} co={C.gold}/></div>}
+        <div style={{fontFamily:FC,fontSize:14,letterSpacing:'.15em',color:C.goldBr,marginBottom:12}}>
+          {title}
+        </div>
+        <div style={{fontFamily:FB,fontSize:13,color:C.sub,lineHeight:1.7}}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function SetupScreen(){
+  return(
+    <CenterScreen title="CONFIGURAÇÃO NECESSÁRIA" Ico={WarnIco}>
+      Edite o arquivo <strong style={{color:C.gold}}>config.js</strong> com a URL
+      e a chave "anon public" do seu projeto Supabase.<br/><br/>
+      Consulte <strong style={{color:C.gold}}>README.md</strong> para o passo a passo
+      completo de criação do banco de dados e publicação do app.
+    </CenterScreen>
+  );
+}
+
+function ErrorScreen({msg,onRetry}){
+  return(
+    <CenterScreen title="ERRO AO CARREGAR DADOS" Ico={WarnIco}>
+      {msg}
+      <div style={{marginTop:16}}>
+        <button onClick={onRetry} style={btnPrimary}>TENTAR NOVAMENTE</button>
+      </div>
+      <div style={{marginTop:14,fontSize:11,color:C.dim}}>
+        Verifique se o schema SQL foi executado e se as políticas RLS de leitura
+        pública estão ativas (veja README.md).
+      </div>
+    </CenterScreen>
+  );
+}
+
+function EmptyScreen(){
+  return(
+    <CenterScreen title="NENHUM DADO ENCONTRADO" Ico={WalletIco}>
+      O banco de dados está conectado, mas não há nenhum mês cadastrado ainda.<br/><br/>
+      Acesse a aba <strong style={{color:C.gold}}>ADMIN</strong>, faça login e cadastre
+      o primeiro mês em "Patrimônio".
+    </CenterScreen>
+  );
+}
+
+/* ══ DATA LAYER ═════════════════════════════════════════════════════════ */
+function buildMonths(snapshots,assets,values,contributions){
+  const assetById={};
+  assets.forEach(a=>{assetById[a.id]=a;});
+  return snapshots.map(sn=>{
+    const vals=values.filter(v=>v.snapshot_id===sn.id);
+    const assetsObj={};
+    vals.forEach(v=>{
+      const a=assetById[v.asset_id];
+      if(a)assetsObj[a.name]=Number(v.value);
+    });
+    const total=Object.values(assetsObj).reduce((a,b)=>a+b,0);
+    const contrib=contributions.find(c=>c.snapshot_id===sn.id);
+    return{
+      id:sn.id,label:sn.label,year:sn.year,month:sn.month,
+      assets:assetsObj,total,
+      contribution:contrib?Number(contrib.amount):null,
+      contributionNote:contrib?.note||'',
+    };
+  });
+}
+
+/* ══ APP ROOT ═══════════════════════════════════════════════════════════ */
+function App(){
+  const [session,setSession]=useState(null);
+  const [authBusy,setAuthBusy]=useState(false);
+  const [authError,setAuthError]=useState('');
+  const [loading,setLoading]=useState(true);
+  const [loadError,setLoadError]=useState('');
+  const [rawSnapshots,setRawSnapshots]=useState([]);
+  const [assets,setAssets]=useState([]);
+  const [categories,setCategories]=useState([]);
+  const [snapshotValues,setSnapshotValues]=useState([]);
+  const [contributions,setContributions]=useState([]);
+  const [view,setView]=useState('dash');
+  const [toast,setToast]=useState(null);
+
+  const notify=useCallback((msg,type='info')=>{
+    setToast({msg,type});
+    setTimeout(()=>setToast(null),3000);
+  },[]);
+
+  const fetchAll=useCallback(async()=>{
+    if(!sb)return;
+    try{
+      const [c,a,s,v,ct]=await Promise.all([
+        sb.from('categories').select('*').order('sort_order',{ascending:true}),
+        sb.from('assets').select('*').order('sort_order',{ascending:true}),
+        sb.from('snapshots').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
+        sb.from('snapshot_values').select('*'),
+        sb.from('contributions').select('*'),
+      ]);
+      const err=c.error||a.error||s.error||v.error||ct.error;
+      if(err)throw err;
+      setCategories(c.data||[]);
+      setAssets(a.data||[]);
+      setRawSnapshots(s.data||[]);
+      setSnapshotValues(v.data||[]);
+      setContributions(ct.data||[]);
+      setLoadError('');
+    }catch(err){
+      setLoadError(err.message||'Erro ao carregar dados do Supabase.');
+    }finally{
+      setLoading(false);
+    }
+  },[]);
+
+  useEffect(()=>{fetchAll();},[fetchAll]);
+
+  useEffect(()=>{
+    if(!sb)return;
+    let to;
+    const deb=()=>{clearTimeout(to);to=setTimeout(fetchAll,400);};
+    const ch=sb.channel('db-changes')
+      .on('postgres_changes',{event:'*',schema:'public',table:'snapshot_values'},deb)
+      .on('postgres_changes',{event:'*',schema:'public',table:'snapshots'},deb)
+      .on('postgres_changes',{event:'*',schema:'public',table:'assets'},deb)
+      .on('postgres_changes',{event:'*',schema:'public',table:'categories'},deb)
+      .on('postgres_changes',{event:'*',schema:'public',table:'contributions'},deb)
+      .subscribe();
+    return ()=>{clearTimeout(to);sb.removeChannel(ch);};
+  },[fetchAll]);
+
+  useEffect(()=>{
+    if(!sb)return;
+    sb.auth.getSession().then(({data})=>setSession(data.session));
+    const {data:sub}=sb.auth.onAuthStateChange((_e,sess)=>setSession(sess));
+    return ()=>sub.subscription.unsubscribe();
+  },[]);
+
+  const handleLogin=async(email,pw)=>{
+    setAuthBusy(true);setAuthError('');
+    const {error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error)setAuthError('E-mail ou senha inválidos.');
+    setAuthBusy(false);
+  };
+  const handleLogout=()=>sb.auth.signOut();
+
+  /* ── API: todas as operações de escrita ── */
+  const api=useMemo(()=>({
+    addAsset: async(name,category_id)=>{
+      try{
+        const sort_order=assets.length;
+        const {error}=await sb.from('assets').insert({name,category_id,active:true,sort_order});
+        if(error)throw error;
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    updateAsset: async(id,fields)=>{
+      try{
+        const{error}=await sb.from('assets').update(fields).eq('id',id);
+        if(error)throw error;
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    deleteAsset: async(id)=>{
+      try{
+        const{error}=await sb.from('assets').delete().eq('id',id);
+        if(error)throw error;
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    createSnapshot: async(year,month,label,valuesMap)=>{
+      try{
+        const{data:snap,error:e1}=await sb.from('snapshots')
+          .insert({year,month,label,snapshot_date:new Date().toISOString().slice(0,10)})
+          .select().single();
+        if(e1)throw e1;
+        const rows=Object.entries(valuesMap).map(([name,value])=>{
+          const asset=assets.find(a=>a.name===name);
+          return asset?{snapshot_id:snap.id,asset_id:asset.id,value}:null;
+        }).filter(Boolean);
+        if(rows.length){
+          const{error:e2}=await sb.from('snapshot_values')
+            .upsert(rows,{onConflict:'snapshot_id,asset_id'});
+          if(e2)throw e2;
+        }
+        return{ok:true,id:snap.id};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    saveSnapshotValues: async(snapshotId,valuesMap)=>{
+      try{
+        const rows=Object.entries(valuesMap).map(([name,value])=>{
+          const asset=assets.find(a=>a.name===name);
+          return asset?{snapshot_id:snapshotId,asset_id:asset.id,value}:null;
+        }).filter(Boolean);
+        if(rows.length){
+          const{error}=await sb.from('snapshot_values')
+            .upsert(rows,{onConflict:'snapshot_id,asset_id'});
+          if(error)throw error;
+        }
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    saveContribution: async(snapshotId,amount,note)=>{
+      try{
+        const{error}=await sb.from('contributions')
+          .upsert({snapshot_id:snapshotId,amount,note},{onConflict:'snapshot_id'});
+        if(error)throw error;
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    updateCategory: async(id,fields)=>{
+      try{
+        const{error}=await sb.from('categories').update(fields).eq('id',id);
+        if(error)throw error;
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    addCategory: async(name,color,target_percent)=>{
+      try{
+        const sort_order=categories.length;
+        const{error}=await sb.from('categories').insert({name,color,target_percent,sort_order});
+        if(error)throw error;
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+    deleteCategory: async(id)=>{
+      try{
+        const{error}=await sb.from('categories').delete().eq('id',id);
+        if(error)throw error;
+        return{ok:true};
+      }catch(err){return{ok:false,error:err.message};}
+    },
+  }),[assets,categories]);
+
+  const months=useMemo(()=>buildMonths(rawSnapshots,assets,snapshotValues,contributions),
+    [rawSnapshots,assets,snapshotValues,contributions]);
+  const data=useMemo(()=>enrich(months),[months]);
+
+  useEffect(()=>{
+    if(loading)return;
+    const el=document.getElementById('loading');
+    if(el){el.style.opacity='0';setTimeout(()=>el.remove(),400);}
+  },[loading]);
+
+  if(!CONFIGURED)return <SetupScreen/>;
+  if(loading)return null;
+  if(loadError)return <ErrorScreen msg={loadError} onRetry={fetchAll}/>;
+  if(view!=='admin'&&data.length===0)return(
+    <div style={{background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)',minHeight:'100vh'}}>
+      <EmptyScreen/>
+      <BottomNav view={view} setView={setView} session={session}/>
+    </div>
+  );
+
+  return(
+    <div style={{background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)',
+      minHeight:'100vh',color:C.txt,fontFamily:FB,
+      display:'flex',flexDirection:'column',maxWidth:480,margin:'0 auto'}}>
+      <div style={{position:'sticky',top:0,zIndex:50,background:C.surf,
+        borderBottom:`0.5px solid ${C.goldBd}`,
+        paddingTop:'calc(var(--sat,0px) + 10px)',paddingBottom:10,paddingLeft:16,paddingRight:16}}>
+        <div style={{fontFamily:FC,fontSize:13,fontWeight:700,letterSpacing:'.28em',
+          color:C.gold,textAlign:'center'}}>◆ PATRIMÔNIO ◆</div>
+        <div style={{fontFamily:FC,fontSize:8,color:C.dim,letterSpacing:'.2em',
+          textAlign:'center',marginTop:2}}>CONTROLE FINANCEIRO PESSOAL</div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',paddingBottom:'calc(var(--sab,20px) + 64px)'}}>
+        {view==='dash'&&<Dashboard data={data} assets={assets} categories={categories}/>}
+        {view==='hist'&&<Timeline data={data}/>}
+        {view==='anal'&&<Analysis data={data} assets={assets} categories={categories}/>}
+        {view==='admin'&&(
+          <Admin session={session} onLogin={handleLogin} onLogout={handleLogout}
+            authBusy={authBusy} authError={authError}
+            data={data} assets={assets} categories={categories} api={api} notify={notify}/>
+        )}
+      </div>
+
+      <BottomNav view={view} setView={setView} session={session}/>
+      <Toast msg={toast?.msg} type={toast?.type}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

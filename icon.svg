@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#0d0b08"/>
+
+  <!-- Outer ring -->
+  <circle cx="256" cy="256" r="218" fill="none" stroke="#c9a84c" stroke-width="2.5" opacity="0.5"/>
+
+  <!-- Inner fill -->
+  <circle cx="256" cy="256" r="196" fill="#141210"/>
+
+  <!-- Inner ring -->
+  <circle cx="256" cy="256" r="178" fill="none" stroke="#c9a84c" stroke-width="1.5" opacity="0.35"/>
+
+  <!-- Diamond ornaments at cardinal points -->
+  <polygon points="256,42  263,58  256,74  249,58"  fill="#c9a84c" opacity="0.8"/>
+  <polygon points="256,438 263,454 256,470 249,454" fill="#c9a84c" opacity="0.8"/>
+  <polygon points="42,256  58,263  74,256  58,249"  fill="#c9a84c" opacity="0.8"/>
+  <polygon points="438,256 454,263 470,256 454,249" fill="#c9a84c" opacity="0.8"/>
+
+  <!-- Monogram "P" -->
+  <text x="256" y="316"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="210"
+    font-weight="bold"
+    fill="#c9a84c"
+    opacity="0.92">P</text>
+
+  <!-- Subtitle bar -->
+  <rect x="156" y="336" width="200" height="1.5" fill="#c9a84c" opacity="0.3"/>
+  <text x="256" y="362"
+    text-anchor="middle"
+    font-family="Georgia, serif"
+    font-size="22"
+    letter-spacing="8"
+    fill="#c9a84c"
+    opacity="0.55">ATR</text>
+</svg>
