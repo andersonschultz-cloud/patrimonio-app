@@ -45,7 +45,7 @@ const {useState,useEffect,useRef,useMemo,useCallback}=React;
 /* ══ SUPABASE CLIENT ════════════════════════════════════════════════════ */
 const CFG = window.SUPABASE_CONFIG || {};
 const CONFIGURED = !!(CFG.url && CFG.anonKey &&
-  !CFG.url.includes('SEU-PROJETO') && !CFG.anonKey.includes('SUA-CHAVE'));
+  !CFG.url.includes('https://hrtjdlvgcyrkdznnkliz.supabase.co') && !CFG.anonKey.includes('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhydGpkbHZnY3lya2R6bm5rbGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDQ4MTQsImV4cCI6MjA5NzEyMDgxNH0.uguA2NJy2v_lGzp9tn4DAI6CC5fmszIGjG4EI-2QZpg'));
 
 const sb = CONFIGURED
   ? window.supabase.createClient(CFG.url, CFG.anonKey)
