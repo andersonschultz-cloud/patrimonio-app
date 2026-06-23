@@ -30,7 +30,7 @@ button{-webkit-appearance:none;background:none;border:none;cursor:pointer;font:i
 <body>
 <div id="loading">
   <div class="ld-title">◆ &nbsp; PATRIMÔNIO &nbsp; ◆</div>
-  <div class="ld-sub">CONECTANDO AO BANCO DE DADOS</div>
+  <div class="ld-sub">VERIFICANDO SESSÃO</div>
 </div>
 <div id="root"></div>
 
@@ -1120,13 +1120,8 @@ function AdminCategorias({categories,api,notify}){
 }
 
 /* ══ ADMIN ROOT ═════════════════════════════════════════════════════════ */
-function Admin({session,onLogin,onLogout,authBusy,authError,data,assets,categories,api,notify}){
+function Admin({session,onLogout,data,assets,categories,api,notify}){
   const [tab,setTab]=useState('patrimonio');
-
-  if(!session){
-    return <LoginForm onLogin={onLogin} busy={authBusy} error={authError}/>;
-  }
-
   const tabs=[
     {id:'patrimonio',label:'Patrimônio',Ico:WalletIco},
     {id:'aportes',label:'Aportes',Ico:LayersIco},
@@ -1279,10 +1274,16 @@ function buildMonths(snapshots,assets,values,contributions){
 
 /* ══ APP ROOT ═══════════════════════════════════════════════════════════ */
 function App(){
+  // ── Auth state ──────────────────────────────────────────────────────
+  // authChecked: false = ainda não sabemos se há sessão (aguardando Supabase)
+  // session: null = não autenticado; objeto = autenticado
+  const [authChecked,setAuthChecked]=useState(false);
   const [session,setSession]=useState(null);
   const [authBusy,setAuthBusy]=useState(false);
   const [authError,setAuthError]=useState('');
-  const [loading,setLoading]=useState(true);
+
+  // ── Data state (só populado após autenticação) ───────────────────────
+  const [loading,setLoading]=useState(false);
   const [loadError,setLoadError]=useState('');
   const [rawSnapshots,setRawSnapshots]=useState([]);
   const [assets,setAssets]=useState([]);
@@ -1297,8 +1298,10 @@ function App(){
     setTimeout(()=>setToast(null),3000);
   },[]);
 
+  // fetchAll só é chamado quando há sessão ativa
   const fetchAll=useCallback(async()=>{
-    if(!sb)return;
+    if(!sb||!session)return;
+    setLoading(true);
     try{
       const [c,a,s,v,ct]=await Promise.all([
         sb.from('categories').select('*').order('sort_order',{ascending:true}),
@@ -1320,12 +1323,36 @@ function App(){
     }finally{
       setLoading(false);
     }
-  },[]);
+  },[session]);
 
-  useEffect(()=>{fetchAll();},[fetchAll]);
-
+  // Verifica sessão existente UMA vez ao montar; escuta mudanças de auth
   useEffect(()=>{
     if(!sb)return;
+    sb.auth.getSession().then(({data})=>{
+      setSession(data.session);
+      setAuthChecked(true);
+    });
+    const {data:sub}=sb.auth.onAuthStateChange((_e,sess)=>{
+      setSession(sess);
+      setAuthChecked(true);
+      // Limpa dados financeiros ao deslogar — nunca ficam na memória após logout
+      if(!sess){
+        setRawSnapshots([]);setAssets([]);setCategories([]);
+        setSnapshotValues([]);setContributions([]);
+        setLoadError('');setView('dash');
+      }
+    });
+    return ()=>sub.subscription.unsubscribe();
+  },[]);
+
+  // Busca dados somente quando sessão se torna disponível
+  useEffect(()=>{
+    if(session)fetchAll();
+  },[session]);
+
+  // Realtime — só ativo com sessão
+  useEffect(()=>{
+    if(!sb||!session)return;
     let to;
     const deb=()=>{clearTimeout(to);to=setTimeout(fetchAll,400);};
     const ch=sb.channel('db-changes')
@@ -1336,22 +1363,18 @@ function App(){
       .on('postgres_changes',{event:'*',schema:'public',table:'contributions'},deb)
       .subscribe();
     return ()=>{clearTimeout(to);sb.removeChannel(ch);};
-  },[fetchAll]);
-
-  useEffect(()=>{
-    if(!sb)return;
-    sb.auth.getSession().then(({data})=>setSession(data.session));
-    const {data:sub}=sb.auth.onAuthStateChange((_e,sess)=>setSession(sess));
-    return ()=>sub.subscription.unsubscribe();
-  },[]);
+  },[session,fetchAll]);
 
   const handleLogin=async(email,pw)=>{
     setAuthBusy(true);setAuthError('');
     const {error}=await sb.auth.signInWithPassword({email,password:pw});
-    if(error)setAuthError('E-mail ou senha inválidos.');
+    if(error)setAuthError('E-mail ou senha inválidos. Verifique e tente novamente.');
     setAuthBusy(false);
   };
-  const handleLogout=()=>sb.auth.signOut();
+  const handleLogout=async()=>{
+    await sb.auth.signOut();
+    // onAuthStateChange cuida de limpar os dados e a sessão
+  };
 
   /* ── API: todas as operações de escrita ── */
   const api=useMemo(()=>({
@@ -1445,16 +1468,54 @@ function App(){
     [rawSnapshots,assets,snapshotValues,contributions]);
   const data=useMemo(()=>enrich(months),[months]);
 
+  // Remove o loading inicial do HTML após verificar sessão
   useEffect(()=>{
-    if(loading)return;
+    if(!authChecked)return;
     const el=document.getElementById('loading');
     if(el){el.style.opacity='0';setTimeout(()=>el.remove(),400);}
-  },[loading]);
+  },[authChecked]);
 
+  // ── Guards ──────────────────────────────────────────────────────────
   if(!CONFIGURED)return <SetupScreen/>;
-  if(loading)return null;
+
+  // Aguardando Supabase confirmar sessão → loading spinner (nada renderizado)
+  if(!authChecked)return null;
+
+  // Sessão inválida ou inexistente → tela de login, NENHUM dado financeiro
+  if(!session){
+    return(
+      <div style={{background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)',
+        minHeight:'100vh',display:'flex',flexDirection:'column',
+        maxWidth:480,margin:'0 auto'}}>
+        <div style={{position:'sticky',top:0,zIndex:50,background:C.surf,
+          borderBottom:`0.5px solid ${C.goldBd}`,
+          paddingTop:'calc(var(--sat,0px) + 10px)',paddingBottom:10,paddingLeft:16,paddingRight:16}}>
+          <div style={{fontFamily:FC,fontSize:13,fontWeight:700,letterSpacing:'.28em',
+            color:C.gold,textAlign:'center'}}>◆ PATRIMÔNIO ◆</div>
+          <div style={{fontFamily:FC,fontSize:8,color:C.dim,letterSpacing:'.2em',
+            textAlign:'center',marginTop:2}}>CONTROLE FINANCEIRO PESSOAL</div>
+        </div>
+        <LoginForm onLogin={handleLogin} busy={authBusy} error={authError}/>
+      </div>
+    );
+  }
+
+  // ── Usuário autenticado → app completo ──────────────────────────────
   if(loadError)return <ErrorScreen msg={loadError} onRetry={fetchAll}/>;
-  if(view!=='admin'&&data.length===0)return(
+
+  if(loading)return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',
+      background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.25em',color:C.sub,marginBottom:8}}>
+          CARREGANDO DADOS
+        </div>
+        <div style={{fontFamily:FB,fontSize:12,color:C.dim}}>Aguarde...</div>
+      </div>
+    </div>
+  );
+
+  if(data.length===0&&view!=='admin')return(
     <div style={{background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)',minHeight:'100vh'}}>
       <EmptyScreen/>
       <BottomNav view={view} setView={setView} session={session}/>
@@ -1479,8 +1540,7 @@ function App(){
         {view==='hist'&&<Timeline data={data}/>}
         {view==='anal'&&<Analysis data={data} assets={assets} categories={categories}/>}
         {view==='admin'&&(
-          <Admin session={session} onLogin={handleLogin} onLogout={handleLogout}
-            authBusy={authBusy} authError={authError}
+          <Admin session={session} onLogout={handleLogout}
             data={data} assets={assets} categories={categories} api={api} notify={notify}/>
         )}
       </div>
