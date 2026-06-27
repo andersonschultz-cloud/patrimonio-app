@@ -1,11 +1,8 @@
-const CACHE = 'patrimonio-v4-supabase';
+const CACHE = 'patrimonio-v6-fix-jsx';
 
-// App shell — arquivos estáticos que não mudam (o conteúdo financeiro
-// vem do Supabase em tempo real e NÃO é armazenado no cache).
 const CORE = [
   './',
   './index.html',
-  './config.js',
   './manifest.json',
   './icon.svg',
   './icon-192.png',
@@ -20,44 +17,65 @@ const CDN = [
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap',
 ];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
+self.addEventListener('install', event => {
+  event.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll([...CORE, ...CDN]))
-      .catch(() => caches.open(CACHE).then(c => c.addAll(CORE)))
+      .then(cache => cache.addAll(CORE))
+      .then(() => caches.open(CACHE))
+      .then(cache => Promise.allSettled(CDN.map(url => cache.add(url))))
   );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
 
-  const url = e.request.url;
+  const url = new URL(event.request.url);
 
-  // NUNCA cachear chamadas à API do Supabase — sempre buscar dados frescos.
-  if (url.includes('supabase.co/rest') || url.includes('supabase.co/auth') ||
-      url.includes('supabase.co/realtime')) {
-    return; // deixa passar direto para a rede
+  // Supabase sempre em tempo real.
+  if (url.hostname.includes('supabase.co')) return;
+
+  // Nunca servir config.js antigo do cache.
+  if (url.pathname.endsWith('/config.js')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    return;
   }
 
-  // App shell e CDNs: cache-first com atualização em segundo plano.
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(res => {
-        if (res && res.status === 200) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+  // HTML/navegação: rede primeiro, cache apenas como fallback offline.
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .then(response => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then(cache => cache.put('./index.html', copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match('./index.html').then(r => r || caches.match('./')))
+    );
+    return;
+  }
+
+  // Demais arquivos: cache primeiro com atualização em segundo plano.
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      const network = fetch(event.request).then(response => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then(cache => cache.put(event.request, copy));
         }
-        return res;
+        return response;
       }).catch(() => cached);
-      return cached || fetchPromise;
+      return cached || network;
     })
   );
 });
