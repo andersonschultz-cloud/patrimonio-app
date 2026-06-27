@@ -3,31 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0d0b08">
+<meta name="theme-color" content="#02070b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Patrimônio">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>Patrimônio</title>
+<title>Patrimônio · Inteligência Financeira</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body,#root{height:100%;background:#0d0b08}
-body{-webkit-text-size-adjust:100%}
+:root{
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  --bg:#02070b;--surface:rgba(5,15,23,.88);--card:rgba(7,21,31,.82);--card-2:rgba(9,29,42,.92);
+  --accent:#00bff3;--accent-bright:#68e5ff;--accent-soft:rgba(0,191,243,.11);--accent-border:rgba(0,191,243,.30);--accent-border-strong:rgba(0,191,243,.58);
+  --text:#edfaff;--sub:#8fa8b6;--dim:#4f6774;--green:#35d07f;--green-soft:rgba(53,208,127,.14);
+  --red:#ff5b59;--red-soft:rgba(255,91,89,.14);--blue:#44cfff;--blue-soft:rgba(68,207,255,.14);
+  --border:rgba(76,205,244,.17);--border-sub:rgba(76,205,244,.08);
+  --app-bg:linear-gradient(145deg,#020609 0%,#04121b 52%,#02070b 100%);
+  --header-bg:rgba(2,10,15,.84);--shadow:0 18px 55px rgba(0,0,0,.38);--glow:0 0 28px rgba(0,191,243,.16);
+}
+:root[data-theme="light"]{
+  --bg:#eef8fc;--surface:rgba(255,255,255,.88);--card:rgba(255,255,255,.78);--card-2:rgba(236,248,253,.96);
+  --accent:#007da6;--accent-bright:#00a9df;--accent-soft:rgba(0,125,166,.09);--accent-border:rgba(0,125,166,.24);--accent-border-strong:rgba(0,125,166,.48);
+  --text:#082533;--sub:#476571;--dim:#8198a2;--green:#158a54;--green-soft:rgba(21,138,84,.11);
+  --red:#c63d3b;--red-soft:rgba(198,61,59,.11);--blue:#007da6;--blue-soft:rgba(0,125,166,.11);
+  --border:rgba(0,100,134,.17);--border-sub:rgba(0,100,134,.08);
+  --app-bg:linear-gradient(145deg,#f8fdff 0%,#eaf7fc 55%,#f4fbfe 100%);
+  --header-bg:rgba(247,253,255,.88);--shadow:0 18px 55px rgba(31,91,112,.12);--glow:0 0 28px rgba(0,125,166,.10);
+}
+:root[data-theme="burn"]{
+  --bg:#090202;--surface:rgba(22,6,6,.90);--card:rgba(31,7,7,.84);--card-2:rgba(47,10,9,.94);
+  --accent:#ef2d22;--accent-bright:#ff776b;--accent-soft:rgba(239,45,34,.12);--accent-border:rgba(239,45,34,.31);--accent-border-strong:rgba(255,67,53,.60);
+  --text:#fff2ef;--sub:#c59a94;--dim:#76504c;--green:#55d989;--green-soft:rgba(85,217,137,.13);
+  --red:#ff5147;--red-soft:rgba(255,81,71,.15);--blue:#ff5147;--blue-soft:rgba(255,81,71,.14);
+  --border:rgba(255,79,66,.18);--border-sub:rgba(255,79,66,.08);
+  --app-bg:linear-gradient(145deg,#090202 0%,#1b0504 54%,#080101 100%);
+  --header-bg:rgba(15,3,3,.86);--shadow:0 18px 55px rgba(0,0,0,.44);--glow:0 0 30px rgba(239,45,34,.18);
+}
+html,body,#root{min-height:100%;background:var(--bg)}
+body{font-family:'Inter',sans-serif;color:var(--text);-webkit-text-size-adjust:100%;overflow-x:hidden}
 *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none}
 input,textarea,select{-webkit-appearance:none;outline:none;user-select:text;font-family:inherit}
 button{-webkit-appearance:none;background:none;border:none;cursor:pointer;font:inherit}
-::-webkit-scrollbar{display:none}
-:root{--sat:env(safe-area-inset-top,44px);--sab:env(safe-area-inset-bottom,20px)}
-#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;background:#0d0b08;z-index:9999;gap:16px;transition:opacity .4s}
-.ld-title{font-family:Georgia,serif;color:#c9a84c;font-size:13px;letter-spacing:.35em}
-.ld-sub{font-family:Georgia,serif;color:#50422f;font-size:10px;letter-spacing:.2em;margin-top:4px}
+::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:var(--accent-border);border-radius:10px}::-webkit-scrollbar-track{background:transparent}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--app-bg);z-index:9999;gap:16px;transition:opacity .4s}
+.ld-title{font-family:'Rajdhani',sans-serif;color:var(--accent-bright);font-size:14px;font-weight:700;letter-spacing:.32em;text-shadow:0 0 18px var(--accent)}
+.ld-sub{font-family:'Inter',sans-serif;color:var(--dim);font-size:10px;letter-spacing:.2em;margin-top:4px}
+.app-shell{position:relative;isolation:isolate;background:var(--app-bg)}
+.glass{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+@media(min-width:760px){.desktop-frame{max-width:1180px!important;border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:var(--shadow)}}
+@media(max-width:480px){button,input,select{min-height:44px}.mobile-hide{display:none!important}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
+<script>document.documentElement.dataset.theme=localStorage.getItem('patrimonio-theme')||'dark';</script>
 <div id="loading">
   <div class="ld-title">◆ &nbsp; PATRIMÔNIO &nbsp; ◆</div>
   <div class="ld-sub">VERIFICANDO SESSÃO</div>
@@ -53,40 +85,28 @@ const sb = CONFIGURED
 
 /* ══ THEME ══════════════════════════════════════════════════════════════ */
 const C={
-  bg:'#0d0b08',surf:'#141210',card:'#1a1714',card2:'#201d19',
-  gold:'#c9a84c',goldBr:'#e8ca72',
-  goldFt:'rgba(201,168,76,.09)',goldBd:'rgba(201,168,76,.22)',goldBd2:'rgba(201,168,76,.4)',
-  txt:'#d4c5a9',sub:'#8a7963',dim:'#50422f',
-  grn:'#5aab4a',grnFt:'rgba(90,171,74,.14)',
-  red:'#c9522a',redFt:'rgba(201,82,42,.14)',
-  blue:'#6f9bbf',blueFt:'rgba(111,155,191,.14)',
-  bd:'rgba(201,168,76,.14)',bdSub:'rgba(201,168,76,.07)',
+  bg:'var(--bg)',surf:'var(--surface)',card:'var(--card)',card2:'var(--card-2)',
+  gold:'var(--accent)',goldBr:'var(--accent-bright)',
+  goldFt:'var(--accent-soft)',goldBd:'var(--accent-border)',goldBd2:'var(--accent-border-strong)',
+  txt:'var(--text)',sub:'var(--sub)',dim:'var(--dim)',
+  grn:'var(--green)',grnFt:'var(--green-soft)',red:'var(--red)',redFt:'var(--red-soft)',
+  blue:'var(--blue)',blueFt:'var(--blue-soft)',bd:'var(--border)',bdSub:'var(--border-sub)',
+  appBg:'var(--app-bg)',headerBg:'var(--header-bg)',shadow:'var(--shadow)',glow:'var(--glow)'
 };
-const FC="'Cinzel',Georgia,serif";
-const FB="'Crimson Text',Georgia,serif";
+const FC="'Rajdhani','Inter',sans-serif";
+const FB="'Inter',sans-serif";
 
-const inputSt={
-  background:C.card2,border:`1px solid ${C.goldBd}`,color:C.goldBr,
-  borderRadius:6,padding:'8px 10px',fontFamily:FB,fontSize:14,
-  width:'100%',outline:'none',
-};
-const labelSt={
-  fontFamily:FC,fontSize:9,letterSpacing:'.15em',color:C.sub,
-  marginBottom:5,display:'block',textTransform:'uppercase',
-};
-const btnPrimary={
-  background:C.goldFt,border:`1px solid ${C.goldBd2}`,color:C.goldBr,
-  borderRadius:7,padding:'10px 18px',fontFamily:FC,fontSize:11,
-  letterSpacing:'.15em',textAlign:'center',
-};
-const btnGhost={
-  background:'none',border:`0.5px solid ${C.bd}`,color:C.sub,
-  borderRadius:7,padding:'9px 16px',fontFamily:FC,fontSize:10,letterSpacing:'.1em',
-};
-const btnDanger={
-  background:C.redFt,border:'1px solid rgba(201,82,42,.35)',color:'#e8a98c',
-  borderRadius:6,padding:'7px 12px',fontFamily:FC,fontSize:10,letterSpacing:'.1em',
-};
+const inputSt={background:C.card2,border:`1px solid ${C.goldBd}`,color:C.txt,borderRadius:10,
+  padding:'10px 12px',fontFamily:FB,fontSize:14,width:'100%',outline:'none',boxShadow:'inset 0 1px 0 rgba(255,255,255,.025)'};
+const labelSt={fontFamily:FC,fontSize:10,fontWeight:700,letterSpacing:'.14em',color:C.sub,
+  marginBottom:6,display:'block',textTransform:'uppercase'};
+const btnPrimary={background:`linear-gradient(135deg,${C.goldBr},${C.gold})`,border:`1px solid ${C.goldBr}`,
+  color:'#021017',borderRadius:10,padding:'11px 18px',fontFamily:FC,fontWeight:700,fontSize:12,
+  letterSpacing:'.12em',textAlign:'center',boxShadow:C.glow};
+const btnGhost={background:C.goldFt,border:`1px solid ${C.goldBd}`,color:C.txt,borderRadius:10,
+  padding:'10px 16px',fontFamily:FC,fontWeight:600,fontSize:11,letterSpacing:'.08em'};
+const btnDanger={background:C.redFt,border:`1px solid ${C.red}`,color:C.red,borderRadius:9,
+  padding:'8px 12px',fontFamily:FC,fontSize:11,fontWeight:700,letterSpacing:'.08em'};
 
 /* ══ HELPERS ════════════════════════════════════════════════════════════ */
 const fB=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
@@ -231,19 +251,19 @@ function HistChart({data,h=180,showYears=true}){
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={h} style={{display:'block',overflow:'visible'}}>
       <defs>
         <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#c9a84c" stopOpacity=".22"/>
-          <stop offset="100%" stopColor="#c9a84c" stopOpacity=".01"/>
+          <stop offset="0%" stopColor="var(--accent)" stopOpacity=".22"/>
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity=".01"/>
         </linearGradient>
       </defs>
       {grids.map((gy,i)=>(
         <line key={i} x1={PX} y1={gy} x2={W-PX} y2={gy}
-          stroke="rgba(201,168,76,.07)" strokeWidth=".5" strokeDasharray="3 5"/>
+          stroke="var(--border-sub)" strokeWidth=".5" strokeDasharray="3 5"/>
       ))}
       {segs.map((sg,i)=><path key={`a${i}`} d={areaPath(sg)} fill="url(#cg)"/>)}
       {segs.map((sg,i)=><path key={`l${i}`} d={curvePath(sg)} fill="none" stroke={C.gold} strokeWidth="1.5"/>)}
       {pts.map(([x,y],i)=>(
         <g key={i}>
-          <circle cx={x} cy={y} r="5" fill="rgba(201,168,76,.1)"/>
+          <circle cx={x} cy={y} r="5" fill="var(--accent-soft)"/>
           <circle cx={x} cy={y} r="2.5" fill={C.gold}/>
         </g>
       ))}
@@ -707,20 +727,53 @@ function Analysis({data,assets,categories}){
   );
 }
 
+/* ══ VISUAL / THEMES ═══════════════════════════════════════════════════ */
+const SunIco=p=><Ico {...p} ch={<><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></>}/>;
+const MoonIco=p=><Ico {...p} ch={<path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/>}/>;
+const FireIco=p=><Ico {...p} ch={<path d="M12 22c4.4 0 8-3.1 8-7.5 0-3.7-2-6.5-5.2-9.5.2 2.8-1.1 4.3-2.3 5.2.1-3.7-1.8-6.5-5-8.2.3 3.7-2.9 6.1-3.4 9.9C3.4 17.1 6.9 22 12 22z"/><path d="M9.5 18.5c0-2 1.3-3.1 2.7-4.5.1 1.4.7 2.2 1.4 2.8.6.5.9 1.1.9 1.8 0 1.4-1.1 2.4-2.5 2.4s-2.5-1-2.5-2.5z"/></>}/>;
+
+function ThemeSwitcher({theme,setTheme,compact=false}){
+  const options=[{id:'dark',label:'Escuro',Ico:MoonIco},{id:'light',label:'Claro',Ico:SunIco},{id:'burn',label:'Burn',Ico:FireIco}];
+  return <div aria-label="Selecionar tema" style={{display:'flex',gap:5,padding:4,border:`1px solid ${C.bd}`,background:C.card,borderRadius:12,boxShadow:C.glow}}>
+    {options.map(o=>{const active=theme===o.id;return <button key={o.id} onClick={()=>setTheme(o.id)} title={`Tema ${o.label}`} aria-label={`Tema ${o.label}`}
+      style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,minWidth:compact?38:82,height:36,padding:compact?'0 9px':'0 11px',
+        borderRadius:9,background:active?C.goldFt:'transparent',border:`1px solid ${active?C.goldBd2:'transparent'}`,color:active?C.goldBr:C.sub}}>
+      <o.Ico sz={16} co="currentColor"/>{!compact&&<span style={{fontFamily:FC,fontWeight:700,fontSize:11,letterSpacing:'.06em'}}>{o.label.toUpperCase()}</span>}
+    </button>})}
+  </div>;
+}
+
+function NetworkBackground({theme}){
+  const ref=useRef(null);
+  useEffect(()=>{
+    const canvas=ref.current,ctx=canvas.getContext('2d');let raf=0,pts=[];
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resize=()=>{const d=Math.min(window.devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d;canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';ctx.setTransform(d,0,0,d,0,0);const count=Math.max(24,Math.min(70,Math.round(innerWidth/22)));pts=Array.from({length:count},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,r:Math.random()*1.6+.6}));};
+    const draw=()=>{ctx.clearRect(0,0,innerWidth,innerHeight);const cs=getComputedStyle(document.documentElement);const color=cs.getPropertyValue('--accent').trim()||'#00bff3';ctx.fillStyle=color;ctx.strokeStyle=color;
+      pts.forEach((p,i)=>{if(!reduced){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>innerWidth)p.vx*=-1;if(p.y<0||p.y>innerHeight)p.vy*=-1;}ctx.globalAlpha=.30;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();for(let j=i+1;j<pts.length;j++){const q=pts[j],dx=p.x-q.x,dy=p.y-q.y,dist=Math.hypot(dx,dy);if(dist<145){ctx.globalAlpha=(1-dist/145)*.13;ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}}});ctx.globalAlpha=1;if(!reduced)raf=requestAnimationFrame(draw);};
+    resize();draw();addEventListener('resize',resize);return()=>{cancelAnimationFrame(raf);removeEventListener('resize',resize)};
+  },[theme]);
+  return <><canvas ref={ref} aria-hidden="true" style={{position:'fixed',inset:0,zIndex:-3,pointerEvents:'none'}}/><div aria-hidden="true" style={{position:'fixed',inset:'-20%',zIndex:-4,pointerEvents:'none',background:`radial-gradient(circle at 75% 18%,${C.goldFt} 0,transparent 34%),radial-gradient(circle at 10% 80%,${C.goldFt} 0,transparent 31%)`,animation:'ambientMove 18s ease-in-out infinite alternate'}}/><style>{`@keyframes ambientMove{from{transform:translate3d(-2%,-1%,0) scale(1)}to{transform:translate3d(3%,2%,0) scale(1.08)}}`}</style></>;
+}
+
+function Brand({large=false}){
+  return <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:large?14:10}}>
+    <img src="icon-512.png" alt="Logo Patrimônio" style={{width:large?112:44,height:large?112:44,objectFit:'contain',borderRadius:'50%',filter:'drop-shadow(0 0 18px var(--accent-border-strong))'}}/>
+    <div style={{textAlign:'left'}}><div style={{fontFamily:FC,fontSize:large?22:15,fontWeight:700,letterSpacing:'.14em',color:C.txt}}>PATRIMÔNIO</div><div style={{fontFamily:FB,fontSize:large?11:8,color:C.goldBr,letterSpacing:'.12em',marginTop:2}}>INTELIGÊNCIA FINANCEIRA</div></div>
+  </div>;
+}
+
 /* ══ LOGIN ══════════════════════════════════════════════════════════════ */
-function LoginForm({onLogin,busy,error}){
+function LoginForm({onLogin,busy,error,theme,setTheme}){
   const [email,setEmail]=useState('');
   const [pw,setPw]=useState('');
   return(
-    <div style={{padding:'40px 16px'}}>
-      <div style={{textAlign:'center',marginBottom:24}}>
-        <LockIco sz={28} co={C.gold}/>
-        <div style={{fontFamily:FC,fontSize:13,letterSpacing:'.2em',color:C.goldBr,marginTop:10}}>
-          ACESSO ADMINISTRATIVO
-        </div>
-        <div style={{fontFamily:FB,fontSize:13,color:C.sub,marginTop:6}}>
-          Entre com sua conta para editar os dados
-        </div>
+    <div style={{padding:'28px 18px 40px',width:'100%'}}>
+      <div style={{display:'flex',justifyContent:'center',marginBottom:22}}><ThemeSwitcher theme={theme} setTheme={setTheme}/></div>
+      <div style={{textAlign:'center',marginBottom:26}}>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><Brand large/></div>
+        <div style={{display:'inline-flex',alignItems:'center',gap:7,padding:'6px 10px',borderRadius:999,background:C.goldFt,border:`1px solid ${C.goldBd}`,fontFamily:FC,fontSize:10,fontWeight:700,letterSpacing:'.13em',color:C.goldBr}}><LockIco sz={13} co={C.goldBr}/> ACESSO SEGURO</div>
+        <div style={{fontFamily:FB,fontSize:13,color:C.sub,marginTop:10}}>Entre com sua conta para acessar e administrar seu patrimônio.</div>
       </div>
       <form onSubmit={e=>{e.preventDefault();onLogin(email,pw);}}
         style={{display:'flex',flexDirection:'column',gap:12,maxWidth:340,margin:'0 auto'}}>
@@ -1177,7 +1230,7 @@ function BottomNav({view,setView,session}){
   ];
   return(
     <div style={{position:'fixed',bottom:0,left:0,right:0,
-      background:C.surf,borderTop:`0.5px solid ${C.goldBd}`,
+      background:C.headerBg,borderTop:`1px solid ${C.goldBd}`,backdropFilter:'blur(18px)',WebkitBackdropFilter:'blur(18px)',
       display:'flex',justifyContent:'space-around',alignItems:'center',
       paddingBottom:'var(--sab,16px)',paddingTop:8,zIndex:100}}>
       {tabs.map(({id,label,Ico})=>{
@@ -1202,7 +1255,7 @@ function BottomNav({view,setView,session}){
 function CenterScreen({title,children,Ico}){
   return(
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',
-      padding:24,background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)'}}>
+      padding:24,background:C.appBg}}>
       <div style={{maxWidth:380,textAlign:'center'}}>
         {Ico&&<div style={{marginBottom:14}}><Ico sz={28} co={C.gold}/></div>}
         <div style={{fontFamily:FC,fontSize:14,letterSpacing:'.15em',color:C.goldBr,marginBottom:12}}>
@@ -1274,6 +1327,9 @@ function buildMonths(snapshots,assets,values,contributions){
 
 /* ══ APP ROOT ═══════════════════════════════════════════════════════════ */
 function App(){
+  const [theme,setTheme]=useState(()=>localStorage.getItem('patrimonio-theme')||'dark');
+  useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem('patrimonio-theme',theme);},[theme]);
+
   // ── Auth state ──────────────────────────────────────────────────────
   // authChecked: false = ainda não sabemos se há sessão (aguardando Supabase)
   // session: null = não autenticado; objeto = autenticado
@@ -1484,18 +1540,11 @@ function App(){
   // Sessão inválida ou inexistente → tela de login, NENHUM dado financeiro
   if(!session){
     return(
-      <div style={{background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)',
-        minHeight:'100vh',display:'flex',flexDirection:'column',
-        maxWidth:480,margin:'0 auto'}}>
-        <div style={{position:'sticky',top:0,zIndex:50,background:C.surf,
-          borderBottom:`0.5px solid ${C.goldBd}`,
-          paddingTop:'calc(var(--sat,0px) + 10px)',paddingBottom:10,paddingLeft:16,paddingRight:16}}>
-          <div style={{fontFamily:FC,fontSize:13,fontWeight:700,letterSpacing:'.28em',
-            color:C.gold,textAlign:'center'}}>◆ PATRIMÔNIO ◆</div>
-          <div style={{fontFamily:FC,fontSize:8,color:C.dim,letterSpacing:'.2em',
-            textAlign:'center',marginTop:2}}>CONTROLE FINANCEIRO PESSOAL</div>
+      <div className="app-shell" style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'max(16px,var(--sat)) 16px max(16px,var(--sab))'}}>
+        <NetworkBackground theme={theme}/>
+        <div className="glass" style={{width:'100%',maxWidth:440,background:C.surf,border:`1px solid ${C.goldBd}`,borderRadius:22,boxShadow:C.shadow,overflow:'hidden'}}>
+          <LoginForm onLogin={handleLogin} busy={authBusy} error={authError} theme={theme} setTheme={setTheme}/>
         </div>
-        <LoginForm onLogin={handleLogin} busy={authBusy} error={authError}/>
       </div>
     );
   }
@@ -1505,7 +1554,7 @@ function App(){
 
   if(loading)return(
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',
-      background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)'}}>
+      background:C.appBg}}>
       <div style={{textAlign:'center'}}>
         <div style={{fontFamily:FC,fontSize:9,letterSpacing:'.25em',color:C.sub,marginBottom:8}}>
           CARREGANDO DADOS
@@ -1516,23 +1565,18 @@ function App(){
   );
 
   if(data.length===0&&view!=='admin')return(
-    <div style={{background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)',minHeight:'100vh'}}>
+    <div style={{background:C.appBg,minHeight:'100vh'}}>
       <EmptyScreen/>
       <BottomNav view={view} setView={setView} session={session}/>
     </div>
   );
 
   return(
-    <div style={{background:'linear-gradient(170deg,#110e0b 0%,#0a0806 100%)',
-      minHeight:'100vh',color:C.txt,fontFamily:FB,
-      display:'flex',flexDirection:'column',maxWidth:480,margin:'0 auto'}}>
-      <div style={{position:'sticky',top:0,zIndex:50,background:C.surf,
-        borderBottom:`0.5px solid ${C.goldBd}`,
-        paddingTop:'calc(var(--sat,0px) + 10px)',paddingBottom:10,paddingLeft:16,paddingRight:16}}>
-        <div style={{fontFamily:FC,fontSize:13,fontWeight:700,letterSpacing:'.28em',
-          color:C.gold,textAlign:'center'}}>◆ PATRIMÔNIO ◆</div>
-        <div style={{fontFamily:FC,fontSize:8,color:C.dim,letterSpacing:'.2em',
-          textAlign:'center',marginTop:2}}>CONTROLE FINANCEIRO PESSOAL</div>
+    <div className="app-shell desktop-frame" style={{minHeight:'100vh',color:C.txt,fontFamily:FB,display:'flex',flexDirection:'column',margin:'0 auto'}}>
+      <NetworkBackground theme={theme}/>
+      <div className="glass" style={{position:'sticky',top:0,zIndex:50,background:C.headerBg,borderBottom:`1px solid ${C.goldBd}`,paddingTop:'calc(var(--sat,0px) + 8px)',paddingBottom:8,paddingLeft:14,paddingRight:14,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+        <Brand/>
+        <ThemeSwitcher theme={theme} setTheme={setTheme} compact={true}/>
       </div>
 
       <div style={{flex:1,overflowY:'auto',paddingBottom:'calc(var(--sab,20px) + 64px)'}}>
